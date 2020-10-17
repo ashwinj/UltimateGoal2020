@@ -19,7 +19,7 @@ public class AutonomousMethods extends LinearOpMode {
     private double gearRatio = 2;
     private double wheelDiameter = 4;
     //private double countsPerRotation = 1115; //counts per 360 degrees
-    private double encoderCounts = 560; //counts per one rotation of output shaft
+    private double encoderCounts = 383.6*4; //counts per one rotation of output shaft
     private double currentxPosition = 0;
     private double currentyPosition = 0;
     public ElapsedTime runtime = new ElapsedTime();
@@ -37,11 +37,17 @@ public class AutonomousMethods extends LinearOpMode {
 
     //moving forward distance (inch) with power [0, 1]
     public void forward(double power, double distance) {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         double angle = getHeading();
         int counts = (int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
         while (counts >= robot.backLeftMotor.getCurrentPosition()) {
             setAllMotorsTo(power);
         }
+
         //setting all motor powers to 0 (stopping)
         setAllMotorsTo(0);
         stopAndResetEncoders();
@@ -50,11 +56,16 @@ public class AutonomousMethods extends LinearOpMode {
 
     //moving backward distance (inch) with power [0, 1]
     public void backward(double power, double distance) {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         double angle = getHeading() + 180;
         int counts = -(int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
 
         while (counts <= robot.backLeftMotor.getCurrentPosition()) {
-            setAllMotorsTo(power);
+            setAllMotorsTo(-power);
         }
         //setting all motor powers to 0 (stopping)
         setAllMotorsTo(0);
@@ -64,6 +75,11 @@ public class AutonomousMethods extends LinearOpMode {
 
     //strafing left distance (inch) with power [0, 1]
     public void strafeLeft(double power, double distance) {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         double angle = getHeading() - 90;
         int counts = (int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
         //setting all motors to go forward (positive)
@@ -79,6 +95,11 @@ public class AutonomousMethods extends LinearOpMode {
 
     //strafing right distance (inch) with power [0, 1]
     public void strafeRight(double power, double distance) {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
         double angle = getHeading() + 90;
         int counts = -(int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
         while (counts <= robot.backLeftMotor.getCurrentPosition()) {
@@ -88,6 +109,65 @@ public class AutonomousMethods extends LinearOpMode {
         setAllMotorsTo(0);
         stopAndResetEncoders();
     }
+
+    public void right(double power, double degrees) {
+
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        double initAngle = getHeading(); //angle that the robot is at when it starts
+
+        //wait until angle turned is >= angle inputted
+        while (initAngle - getHeading() <= degrees) {
+            telemetry.addData("right", initAngle - getHeading());
+            telemetry.update();
+
+
+            //setting left motors to go forward (positive power)
+            robot.backLeftMotor.setPower(power);
+            robot.frontLeftMotor.setPower(power);
+
+            //setting right motors to go backward (negative power)
+            robot.backRightMotor.setPower(-power);
+            robot.frontRightMotor.setPower(-power);
+        }
+
+        //setting motor value to 0 (stop)
+        stopAndResetEncoders();
+
+    }
+
+    public void left(double power, double degrees) {
+
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        double initAngle = getHeading(); //angle that the robot is at when it starts
+
+        //wait until angle turned is >= angle inputted
+        while (Math.abs(getHeading() - initAngle) <= degrees) {
+            telemetry.addData("left", getHeading() - initAngle);
+            telemetry.update();
+
+
+            //setting left motors to go backward (negitive power)
+            robot.backLeftMotor.setPower(-power);
+            robot.frontLeftMotor.setPower(-power);
+
+            //setting right motors to go forward (positive power)
+            robot.backRightMotor.setPower(power);
+            robot.frontRightMotor.setPower(power);
+        }
+
+        //setting motor value to 0 (stop)
+        stopAndResetEncoders();
+
+    }
+
 
     public void turnRightWithPID(double targetAngle, double kp, double ki, double kd, double threshold) {
         double error = targetAngle - getHeading();
@@ -202,7 +282,7 @@ public class AutonomousMethods extends LinearOpMode {
     //gets the angle in degrees
     public double getHeading() {
         Orientation angles = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        return -angles.firstAngle; // left [0,-180] right[0,180]
+        return angles.firstAngle; // left [0,-180] right[0,180]
     }
 
 

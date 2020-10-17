@@ -4,7 +4,7 @@ package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
-@Autonomous(name = "test", group = "Tau")
+@Autonomous(name = "test run", group = "Tau")
 
 public class Test extends AutonomousMethods {
 
@@ -13,7 +13,9 @@ public class Test extends AutonomousMethods {
 
         //initializing robot
         initializeRobot();
-        forward(1, 24);
+        right(.2, 90);
+        left(.2, 90);
+        //forward(1, 100);
 
     }
 }

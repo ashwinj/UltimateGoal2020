@@ -20,4 +20,14 @@ repositories {
 
 dependencies {
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
+    implementation 'androidx.annotation:annotation:1.1.0'
+    implementation project(path: ':sdk')
+    implementation project(path: ':FtcRobotController')
+}
+
+android{
+    packagingOptions{
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+    }
 }
