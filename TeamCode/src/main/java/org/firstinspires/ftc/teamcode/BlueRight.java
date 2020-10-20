@@ -6,8 +6,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 
 
-@Autonomous(name = "BlueLeft", group = "Tau")
-@Disabled
+@Autonomous(name = "BlueRight", group = "Tau")
 public class BlueRight extends AutonomousMethods {
 
     @Override
@@ -17,6 +16,8 @@ public class BlueRight extends AutonomousMethods {
 
         //initializing robot
         initializeRobot();
+        numberOfRings = findNumRings(bmp);
+        bmp.recycle();
         //shoot?
         //detect number of rings
         switch (numberOfRings){
