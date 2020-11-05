@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
+import com.qualcomm.robotcore.util.Util;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
 import org.firstinspires.ftc.robotcore.external.android.util.Size;
@@ -84,26 +85,24 @@ public class AutonomousMethods extends LinearOpMode {
     /*
      * Some color constants
      */
-    static final Scalar BLUE = new Scalar(0, 0, 255);
-    static final Scalar GREEN = new Scalar(0, 255, 0);
+    //static final Scalar BLUE = new Scalar(0, 0, 255);
+    //static final Scalar GREEN = new Scalar(0, 255, 0);
     /*
      * The core values which define the location and size of the sample regions
      */
-    static final Point REGION1_TOPLEFT_ANCHOR_POINT = new Point(181,98);
-    static final int REGION_WIDTH = 35;
-    static final int REGION_HEIGHT = 25;
-    final int FOUR_RING_THRESHOLD = 150;
-    final int ONE_RING_THRESHOLD = 135;
-    Point region1_pointA = new Point(
-            REGION1_TOPLEFT_ANCHOR_POINT.x,
-            REGION1_TOPLEFT_ANCHOR_POINT.y);
-    Point region1_pointB = new Point(
-            REGION1_TOPLEFT_ANCHOR_POINT.x + REGION_WIDTH,
-            REGION1_TOPLEFT_ANCHOR_POINT.y + REGION_HEIGHT);
-    int avg1;
-    Mat region1_Cb;
-    Mat YCrCb = new Mat();
-    Mat Cb = new Mat();
+    //static final Point REGION1_TOPLEFT_ANCHOR_POINT = new Point(181,98);
+    //static final int REGION_WIDTH = 35;
+    //static final int REGION_HEIGHT = 25;
+    //final int FOUR_RING_THRESHOLD = 150;
+    //final int ONE_RING_THRESHOLD = 135;
+    //Point region1_pointA = new Point(
+    //        REGION1_TOPLEFT_ANCHOR_POINT.x,
+    //        REGION1_TOPLEFT_ANCHOR_POINT.y);
+//    Point region1_pointB = new Point(
+//            REGION1_TOPLEFT_ANCHOR_POINT.x + REGION_WIDTH,
+//            REGION1_TOPLEFT_ANCHOR_POINT.y + REGION_HEIGHT);
+//    int avg1;
+//
     public Bitmap bmp;
     //private volatile EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR;
 
@@ -121,6 +120,7 @@ public class AutonomousMethods extends LinearOpMode {
     public void initializeRobot() {
         robot.initializeHardware(hardwareMap);
 
+        //initializing camera
         callbackHandler = CallbackLooper.getDefault().getHandler();
 
         cameraManager = ClassFactory.getInstance().getCameraManager();
@@ -132,6 +132,7 @@ public class AutonomousMethods extends LinearOpMode {
             error("Error: Cannot load OpenCV LIbrary");
         } else {
             telemetry.addData(">", "Loaded OpenCV");
+            telemetry.update();
         }
 
         try {
@@ -146,18 +147,8 @@ public class AutonomousMethods extends LinearOpMode {
             waitForStart();
 
 
-            boolean buttonPressSeen = false;
-            boolean captureWhenAvailable = false;
-            while (opModeIsActive()) {
+            bmp = frameQueue.poll();
 
-                bmp = frameQueue.poll();
-                if (bmp != null) {
-                    captureWhenAvailable = false;
-
-                }
-
-                telemetry.update();
-            }
         }
         finally {
             closeCamera();
@@ -387,6 +378,33 @@ public class AutonomousMethods extends LinearOpMode {
         currentxPosition=x;
     }
 
+    //sets power of intake
+    public void setIntakePower(double power){
+        robot.intake.setPower(power);
+    }
+
+    //set servo position
+    public void controlLaunchServo(double position){
+        //robot.barrierServo.setPosition(position);
+    }
+
+    //set claw positiom
+    public void controlClawServo(double position){
+        robot.clawServo.setPosition(position);
+    }
+
+    //arm position
+    public void controlArmServo(double position){
+        robot.armServo.setPosition(position);
+    }
+
+    //flywheel
+    public void setShooterPower(double power){
+        robot.shooter.setPower(power);
+    }
+
+
+
     //sets all motors to the same power
     public void setAllMotorsTo(double power) {
         robot.backLeftMotor.setPower(power);
@@ -401,6 +419,14 @@ public class AutonomousMethods extends LinearOpMode {
         robot.backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         robot.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         robot.frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    }
+
+    //set mode to run withouth encodrs
+    public void runWithouthEncoders() {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     //updates position on the field
@@ -561,10 +587,18 @@ public class AutonomousMethods extends LinearOpMode {
 
     public int findNumRings(Bitmap bitmap) {
 
+        //Mat region1_Cb;
+        //Mat HSV = new Mat();
+        //Mat Cb = new Mat();
+
         int rings = 0;
         Mat input = new Mat();
         Utils.bitmapToMat(bitmap, input);
-        /*File file = new File(captureDirectory, String.format(Locale.getDefault(), "webcam-frame-%d.jpg", captureCounter++));
+        Imgproc.cvtColor(input, input, Imgproc.COLOR_BGR2HSV);
+        //org.opencv.core.Size size = new org.opencv.core.Size(400,400);
+        //Imgproc.resize( input, input, size);
+        //Utils.matToBitmap(input, bitmap);
+        File file = new File(captureDirectory, String.format(Locale.getDefault(), "webcam-frame-%d.jpg", captureCounter++));
         try {
             try (FileOutputStream outputStream = new FileOutputStream(file)) {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
@@ -573,85 +607,48 @@ public class AutonomousMethods extends LinearOpMode {
         } catch (IOException e) {
             RobotLog.ee(TAG, e, "exception in saveBitmap()");
             //error("exception saving %s", file.getName());
-        }*/
-        init(input);
-        //inputToCb(input);
-        avg1 = (int) Core.mean(region1_Cb).val[0];
-        Imgproc.rectangle(
-                input, // Buffer to draw on
-                region1_pointA, // First point which defines the rectangle
-                region1_pointB, // Second point which defines the rectangle
-                BLUE, // The color the rectangle is drawn in
-                2); // Thickness of the rectangle lines
+        }
+        //region1_Cb = Cb.submat(new Rect(region1_pointA, region1_pointB));
+
+        //avg1 = (int) Core.mean(region1_Cb).val[0];
+        //Imgproc.rectangle(input, // Buffer to draw on
+        //        region1_pointA, // First point which defines the rectangle
+        //        region1_pointB, // Second point which defines the rectangle
+        //        BLUE, // The color the rectangle is drawn in
+        //        2); // Thickness of the rectangle lines
         //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR; // Record our analysis
-        if(avg1 > FOUR_RING_THRESHOLD){
+
+        Imgproc.rectangle(input, new Point(0,0), new Point(640,320), new Scalar(0,0,255), -1);
+        Imgproc.rectangle(input, new Point(0,430), new Point(640,480), new Scalar(0,0,255), -1);
+        Core.inRange(input, new Scalar(0, 75, 200),new Scalar(35, 230, 255),input);
+        int pixels = Core.countNonZero(input);
+        if(pixels > 5000){
             rings = 4;
             //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR;
 
-        }else if (avg1 > ONE_RING_THRESHOLD){
+        }else if (pixels > 1000){
             rings = 1;
             //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.ONE;
         }else{
             rings = 0;
             //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.NONE;
         }
-        Imgproc.rectangle(
-                input, // Buffer to draw on
-                region1_pointA, // First point which defines the rectangle
-                region1_pointB, // Second point which defines the rectangle
-                GREEN, // The color the rectangle is drawn in
-                -1); // Negative thickness means solid fill
+//        Imgproc.rectangle(
+//                input, // Buffer to draw on
+//                region1_pointA, // First point which defines the rectangle
+//                region1_pointB, // Second point which defines the rectangle
+//                GREEN, // The color the rectangle is drawn in
+//                -1); // Negative thickness means solid fill*/
         return rings;
     }
     void inputToCb(Mat input)
     {
-        Imgproc.cvtColor(input, YCrCb, Imgproc.COLOR_RGB2YCrCb);
-        Core.extractChannel(YCrCb, Cb, 1);
+        //Imgproc.cvtColor(input, YCrCb, Imgproc.COLOR_RGB2YCrCb);
+        //Core.extractChannel(YCrCb, Cb, 1);
     }
     //@Override
-    public void init(Mat firstFrame)
-    {
-        inputToCb(firstFrame);
-        region1_Cb = Cb.submat(new Rect(region1_pointA, region1_pointB));
-    }
     //@Override
-    public Mat processFrame(Mat input)
-    {
 
-        inputToCb(input);
-        avg1 = (int) Core.mean(region1_Cb).val[0];
-        Imgproc.rectangle(
-                input, // Buffer to draw on
-                region1_pointA, // First point which defines the rectangle
-                region1_pointB, // Second point which defines the rectangle
-                BLUE, // The color the rectangle is drawn in
-                2); // Thickness of the rectangle lines
-        //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR; // Record our analysis
-        if(avg1 > FOUR_RING_THRESHOLD){
-            //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR;
-        }else if (avg1 > ONE_RING_THRESHOLD){
-            //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.ONE;
-        }else{
-            //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.NONE;
-        }
-        Imgproc.rectangle(
-                input, // Buffer to draw on
-                region1_pointA, // First point which defines the rectangle
-                region1_pointB, // Second point which defines the rectangle
-                GREEN, // The color the rectangle is drawn in
-                -1); // Negative thickness means solid fill
-        return input;
-    }
-    public int getAnalysis()
-    {
-        return avg1;
-    }
-    public enum RingPosition
-    {
-        FOUR,
-        ONE,
-        NONE
-    }
 
 
 
