@@ -15,7 +15,10 @@ public class Test extends AutonomousMethods {
         //sleep(5000);
         //initializing robot
         initializeRobot();
-        findNumRings(bmp);
+        int numRings = findNumRings(bmp);
+        telemetry.addData("rings", numRings);
+        telemetry.update();
+        sleep(10000);
 
 
 

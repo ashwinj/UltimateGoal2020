@@ -18,7 +18,7 @@ public class Hardware {
     public DcMotor frontRightMotor = null;
     public DcMotor backLeftMotor = null;
     public DcMotor backRightMotor = null;
-    //public Servo barrierServo = null;
+    public Servo barrierServo = null;
     public Servo clawServo = null;
     public Servo armServo = null;
     public DcMotor intake = null;
@@ -51,7 +51,7 @@ public class Hardware {
         backRightMotor = hwMap.dcMotor.get("back_right");
         clawServo = hwMap.servo.get("claw");
         armServo = hwMap.servo.get("arm");
-        //barrierServo = hwMap.servo.get("barrier_servo");
+        barrierServo = hwMap.servo.get("barrier_servo");
         intake = hwMap.dcMotor.get("intake");
         shooter = hwMap.dcMotor.get("shooter");
 

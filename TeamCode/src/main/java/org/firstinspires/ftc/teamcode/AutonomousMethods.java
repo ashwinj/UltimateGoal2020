@@ -41,6 +41,7 @@ import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
+import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.File;
@@ -82,39 +83,18 @@ public class AutonomousMethods extends LinearOpMode {
      * if you're curious): no knowledge of multi-threading is needed here. */
     private Handler callbackHandler;
 
-    /*
-     * Some color constants
-     */
-    //static final Scalar BLUE = new Scalar(0, 0, 255);
-    //static final Scalar GREEN = new Scalar(0, 255, 0);
-    /*
-     * The core values which define the location and size of the sample regions
-     */
-    //static final Point REGION1_TOPLEFT_ANCHOR_POINT = new Point(181,98);
-    //static final int REGION_WIDTH = 35;
-    //static final int REGION_HEIGHT = 25;
-    //final int FOUR_RING_THRESHOLD = 150;
-    //final int ONE_RING_THRESHOLD = 135;
-    //Point region1_pointA = new Point(
-    //        REGION1_TOPLEFT_ANCHOR_POINT.x,
-    //        REGION1_TOPLEFT_ANCHOR_POINT.y);
-//    Point region1_pointB = new Point(
-//            REGION1_TOPLEFT_ANCHOR_POINT.x + REGION_WIDTH,
-//            REGION1_TOPLEFT_ANCHOR_POINT.y + REGION_HEIGHT);
-//    int avg1;
-//
     public Bitmap bmp;
-    //private volatile EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR;
 
 
 
-    public Hardware robot = new Hardware(true);
+   public Hardware robot = new Hardware(true);
     private double gearRatio = 2;
     private double wheelDiameter = 4;
-    //private double countsPerRotation = 1115; //counts per 360 degrees
     private double encoderCounts = 383.6*4; //counts per one rotation of output shaft
     private double currentxPosition = 0;
     private double currentyPosition = 0;
+
+    public double resetAngle = 0;
     public ElapsedTime runtime = new ElapsedTime();
 
     public void initializeRobot() {
@@ -289,7 +269,6 @@ public class AutonomousMethods extends LinearOpMode {
 
     }
 
-
     public void turnRightWithPID(double targetAngle, double kp, double ki, double kd, double threshold) {
         double error = targetAngle - getHeading();
         double previousError = error;
@@ -385,7 +364,7 @@ public class AutonomousMethods extends LinearOpMode {
 
     //set servo position
     public void controlLaunchServo(double position){
-        //robot.barrierServo.setPosition(position);
+        robot.barrierServo.setPosition(position);
     }
 
     //set claw positiom
@@ -438,7 +417,7 @@ public class AutonomousMethods extends LinearOpMode {
     //gets the angle in degrees
     public double getHeading() {
         Orientation angles = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        return angles.firstAngle; // left [0,-180] right[0,180]
+        return angles.firstAngle-resetAngle; // left [0,-180] right[0,180]
     }
 
 
@@ -590,15 +569,8 @@ public class AutonomousMethods extends LinearOpMode {
         //Mat region1_Cb;
         //Mat HSV = new Mat();
         //Mat Cb = new Mat();
-
-        int rings = 0;
-        Mat input = new Mat();
-        Utils.bitmapToMat(bitmap, input);
-        Imgproc.cvtColor(input, input, Imgproc.COLOR_BGR2HSV);
-        //org.opencv.core.Size size = new org.opencv.core.Size(400,400);
-        //Imgproc.resize( input, input, size);
-        //Utils.matToBitmap(input, bitmap);
         File file = new File(captureDirectory, String.format(Locale.getDefault(), "webcam-frame-%d.jpg", captureCounter++));
+
         try {
             try (FileOutputStream outputStream = new FileOutputStream(file)) {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
@@ -608,6 +580,16 @@ public class AutonomousMethods extends LinearOpMode {
             RobotLog.ee(TAG, e, "exception in saveBitmap()");
             //error("exception saving %s", file.getName());
         }
+        Mat input = Imgcodecs.imread("/sdcard/FIRST/data/webcam-frame-0.jpg");
+
+        int rings = 0;
+        int h = input.height();
+        int w = input.width();
+        //Imgproc.cvtColor(input, input, Imgproc.COLOR_BGR2HSV);
+        //org.opencv.core.Size size = new org.opencv.core.Size(400,400);
+        //Imgproc.resize( input, input, size);
+        //Utils.matToBitmap(input, bitmap);
+
         //region1_Cb = Cb.submat(new Rect(region1_pointA, region1_pointB));
 
         //avg1 = (int) Core.mean(region1_Cb).val[0];
@@ -617,12 +599,20 @@ public class AutonomousMethods extends LinearOpMode {
         //        BLUE, // The color the rectangle is drawn in
         //        2); // Thickness of the rectangle lines
         //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR; // Record our analysis
-
-        Imgproc.rectangle(input, new Point(0,0), new Point(640,320), new Scalar(0,0,255), -1);
-        Imgproc.rectangle(input, new Point(0,430), new Point(640,480), new Scalar(0,0,255), -1);
+        Imgproc.rectangle(input, new Point(0,0), new Point(640,150), new Scalar(0,0,255), -1);
+        Imgproc.rectangle(input, new Point(0,350), new Point(640,480), new Scalar(0,0,255), -1);
+        //Imgcodecs.imwrite(captureDirectory+"inp.jpg",input);
+        Imgproc.cvtColor(input,input,Imgproc.COLOR_BGR2HSV);
         Core.inRange(input, new Scalar(0, 75, 200),new Scalar(35, 230, 255),input);
+
+        //Bitmap x = Bitmap.createBitmap(input.rows(),input.cols(),Bitmap.Config.);
+        //Utils.matToBitmap(input,x);
+        //Imgcodecs.imwrite(captureDirectory+"mask.jpg",input);
         int pixels = Core.countNonZero(input);
-        if(pixels > 5000){
+        telemetry.addData("pixels!", pixels);
+        telemetry.addData("width=",w);
+        telemetry.addData("height=",h);
+        if(pixels > 4000){
             rings = 4;
             //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR;
 
@@ -641,8 +631,7 @@ public class AutonomousMethods extends LinearOpMode {
 //                -1); // Negative thickness means solid fill*/
         return rings;
     }
-    void inputToCb(Mat input)
-    {
+    void inputToCb(Mat input) {
         //Imgproc.cvtColor(input, YCrCb, Imgproc.COLOR_RGB2YCrCb);
         //Core.extractChannel(YCrCb, Cb, 1);
     }
