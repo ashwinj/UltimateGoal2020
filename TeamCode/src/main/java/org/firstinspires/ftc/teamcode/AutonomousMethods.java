@@ -58,39 +58,28 @@ public class AutonomousMethods extends LinearOpMode {
 
 
     private static final String TAG = "Webcam: ";
-    private int mNumRings=0;
-
-    /** How long we are to wait to be granted permission to use the camera before giving up. Here,
-     * we wait indefinitely */
+    //How long we are to wait to be granted permission to use the camera before giving up. Here,we wait indefinitely
     private static final int secondsPermissionTimeout = Integer.MAX_VALUE;
-
-    /** State regarding our interaction with the camera */
+    // State regarding our interaction with the camera
     public CameraManager cameraManager;
     public WebcamName cameraName;
     public Camera camera;
     public CameraCaptureSession cameraCaptureSession;
-
-    /** The queue into which all frames from the camera are placed as they become available.
-     * Frames which are not processed by the OpMode are automatically discarded. */
+    //The queue into which all frames from the camera are placed as they become available. Frames which are not processed by the OpMode are automatically discarded. */
     public EvictingBlockingQueue<Bitmap> frameQueue;
-
-    /** State regarding where and how to save frames when the 'A' button is pressed. */
+    //State regarding where and how to save frames when the 'A' button is pressed.
     public int captureCounter = 0;
     public File captureDirectory = AppUtil.ROBOT_DATA_DIR;
-
-    /** A utility object that indicates where the asynchronous callbacks from the camera
-     * infrastructure are to run. In this OpMode, that's all hidden from you (but see {@link #startCamera}
-     * if you're curious): no knowledge of multi-threading is needed here. */
+    //A utility object that indicates where the asynchronous callbacks from the camera infrastructure are to run. In this OpMode, that's all hidden from you (but see {@link #startCamera}if you're curious): no knowledge of multi-threading is needed here.
     private Handler callbackHandler;
-
     public Bitmap bmp;
 
-
-
-   public Hardware robot = new Hardware(true);
-    private double gearRatio = 2;
-    private double wheelDiameter = 4;
-    private double encoderCounts = 383.6*4; //counts per one rotation of output shaft
+    public Hardware robot = new Hardware(true);
+    private final double gearRatio = 2;
+    private final double wheelDiameter = 3.78;
+    private double wheelCircumfrunce = wheelDiameter*Math.PI;
+    private final double encoderCounts = 383.6*4; //counts per one rotation of output shaft
+    double countsPerRotation = encoderCounts/gearRatio;
     private double currentxPosition = 0;
     private double currentyPosition = 0;
 
@@ -134,200 +123,130 @@ public class AutonomousMethods extends LinearOpMode {
             closeCamera();
         }
     }
-
-
     //moving forward distance (inch) with power [0, 1]
     public void forward(double power, double distance) {
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        double angle = getHeading();
-        int counts = (int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
-        while (counts >= robot.backLeftMotor.getCurrentPosition()) {
-            setAllMotorsTo(power);
+        runWithEncoders();
+        int counts = (int) ((distance / (wheelCircumfrunce)) * (countsPerRotation));
+        setTargetPosition(counts, counts, counts, counts);
+        runToPosition();
+        setAllMotorsTo(power);
+        while (robot.backLeftMotor.isBusy()||robot.backRightMotor.isBusy()||robot.frontLeftMotor.isBusy()||robot.frontRightMotor.isBusy()) {
+            idle();
         }
-
-        //setting all motor powers to 0 (stopping)
-        setAllMotorsTo(0);
         stopAndResetEncoders();
-        updatePosition(distance, angle);
     }
-
     //moving backward distance (inch) with power [0, 1]
     public void backward(double power, double distance) {
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        double angle = getHeading() + 180;
-        int counts = -(int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
-
-        while (counts <= robot.backLeftMotor.getCurrentPosition()) {
-            setAllMotorsTo(-power);
+        runWithEncoders();
+        int counts = (int) -((distance / (wheelCircumfrunce)) * (countsPerRotation));
+        setTargetPosition(counts, counts, counts, counts);
+        runToPosition();
+        setAllMotorsTo(-power);
+        while (robot.backLeftMotor.isBusy()||robot.backRightMotor.isBusy()||robot.frontLeftMotor.isBusy()||robot.frontRightMotor.isBusy()) {
+            idle();
         }
-        //setting all motor powers to 0 (stopping)
-        setAllMotorsTo(0);
         stopAndResetEncoders();
-        updatePosition(-distance, angle);
     }
-
     //strafing left distance (inch) with power [0, 1]
     public void strafeLeft(double power, double distance) {
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        double angle = getHeading() - 90;
-        int counts = (int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
-        //setting all motors to go forward (positive)
-        while (counts >= robot.backLeftMotor.getCurrentPosition()) {
-            setPowerOfMotorsTo(power, -power , -power , power );
+        runWithEncoders();
+        int counts = (int) ((distance / (wheelCircumfrunce)) * (countsPerRotation)/Math.sqrt(2));//divide by root 2
+        setTargetPosition(-counts, counts, counts, -counts);
+        runToPosition();
+        setPowerOfMotorsTo(-power, power , power , -power );
+        while (robot.backLeftMotor.isBusy()||robot.backRightMotor.isBusy()||robot.frontLeftMotor.isBusy()||robot.frontRightMotor.isBusy()) {
+            idle();
         }
-        //setting all motor powers to 0 (stopping)
-        setAllMotorsTo(0);
         stopAndResetEncoders();
-        //sleep(500);
-        updatePosition(distance, angle);
     }
-
     //strafing right distance (inch) with power [0, 1]
     public void strafeRight(double power, double distance) {
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        double angle = getHeading() + 90;
-        int counts = -(int) ((distance / (wheelDiameter * Math.PI)) * (encoderCounts / gearRatio));
-        while (counts <= robot.backLeftMotor.getCurrentPosition()) {
-            setPowerOfMotorsTo(-power, power, power, -power);
+        runWithEncoders();
+        int counts = (int) ((distance / (wheelCircumfrunce)) * (countsPerRotation)/Math.sqrt(2));//divide by root 2
+        setTargetPosition(-counts, counts, counts, -counts);
+        runToPosition();
+        setPowerOfMotorsTo(-power, power , power , -power );
+        while (robot.backLeftMotor.isBusy()||robot.backRightMotor.isBusy()||robot.frontLeftMotor.isBusy()||robot.frontRightMotor.isBusy()) {
+            idle();
         }
-        //setting all motor powers to 0 (stopping)
-        setAllMotorsTo(0);
         stopAndResetEncoders();
     }
-
-    public void right(double power, double degrees) {
-
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        double initAngle = getHeading(); //angle that the robot is at when it starts
-
-        //wait until angle turned is >= angle inputted
-        while (initAngle - getHeading() <= degrees) {
-            telemetry.addData("right", initAngle - getHeading());
-            telemetry.update();
-
-
-            //setting left motors to go forward (positive power)
-            robot.backLeftMotor.setPower(power);
-            robot.frontLeftMotor.setPower(power);
-
-            //setting right motors to go backward (negative power)
-            robot.backRightMotor.setPower(-power);
-            robot.frontRightMotor.setPower(-power);
+    //going to any angle, doesn't work at 180
+    public void toAngle(double power, double angle){
+        boolean right = (getHeading()-angle)>0;
+        if (right){
+            setPowerOfMotorsTo(power, power , -power , -power );
+            while (getHeading()>angle){
+                idle();
+            }
         }
-
-        //setting motor value to 0 (stop)
-        stopAndResetEncoders();
-
-    }
-
-    public void left(double power, double degrees) {
-
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        double initAngle = getHeading(); //angle that the robot is at when it starts
-
-        //wait until angle turned is >= angle inputted
-        while (Math.abs(getHeading() - initAngle) <= degrees) {
-            telemetry.addData("left", getHeading() - initAngle);
-            telemetry.update();
-
-
-            //setting left motors to go backward (negitive power)
-            robot.backLeftMotor.setPower(-power);
-            robot.frontLeftMotor.setPower(-power);
-
-            //setting right motors to go forward (positive power)
-            robot.backRightMotor.setPower(power);
-            robot.frontRightMotor.setPower(power);
-        }
-
-        //setting motor value to 0 (stop)
-        stopAndResetEncoders();
-
-    }
-
-    public void turnRightWithPID(double targetAngle, double kp, double ki, double kd, double threshold) {
-        double error = targetAngle - getHeading();
-        double previousError = error;
-        double correction;
-        double slope;
-        runtime.reset();
-
-        while (Math.abs(error) > threshold && opModeIsActive()) {
-
-            error = targetAngle - getHeading(); //updating error
-            slope = (error - previousError) / (double) runtime.time();
-            telemetry.addData("slope", slope);
-            telemetry.addData("error", error);
-            telemetry.update();
-
-            runtime.reset();
-
-            correction = (kp * error)+(kd * slope);
-            setPowerOfMotorsTo(correction, correction, -correction, -correction);
-
+        else {
+            setPowerOfMotorsTo(power, power , -power , -power );
+            while (getHeading()>angle){
+                idle();
+            }
         }
         setAllMotorsTo(0);
-        stopAndResetEncoders();
-
     }
-
-    public void turnLeftWithPID(double targetAngle, double kp, double ki, double kd, double threshold) {
-        double error = targetAngle - getHeading();
-        double previousError = error;
-        double correction;
-        double slope = 0;
-        runtime.reset();
-
-        while (Math.abs(error) > threshold && opModeIsActive()) {
-
-            error = targetAngle - getHeading();
-            slope = (error - previousError) / (double) runtime.time();
-            previousError = error;
-            telemetry.addData("slope", slope);
-            telemetry.addData("error", error);
-            telemetry.update();
-
-            runtime.reset();
-
-            correction = (kp * error) + (kd * slope);
-            setPowerOfMotorsTo(-correction, -correction, correction, correction);
-
-        }
-
-    }
-
-    //sets the power of motors to seperate inputted powers
+    //sets the power of motors to inputted powers
     public void setPowerOfMotorsTo(double bl, double fl, double br, double fr) {
         robot.backLeftMotor.setPower(bl);
         robot.backRightMotor.setPower(br);
         robot.frontRightMotor.setPower(fr);
         robot.frontLeftMotor.setPower(fl);
     }
-
+    //sets all motors to the same power
+    public void setAllMotorsTo(double power) {
+        robot.backLeftMotor.setPower(power);
+        robot.backRightMotor.setPower(power);
+        robot.frontRightMotor.setPower(power);
+        robot.frontLeftMotor.setPower(power);
+    }
+    //resets all wheel encoders to 0
+    public void stopAndResetEncoders() {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+    }
+    //set mode to run with encodrs
+    public void runWithEncoders() {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    }
+    //set mode to run withouth encodrs
+    public void runWithouthEncoders() {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    }
+    //set mode to run to Position
+    public void runToPosition() {
+        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+    }
+    //set target position
+    public void setTargetPosition(int bl, int fl, int br, int fr) {
+        robot.backLeftMotor.setTargetPosition(bl);
+        robot.backRightMotor.setTargetPosition(br);
+        robot.frontRightMotor.setTargetPosition(fr);
+        robot.frontLeftMotor.setTargetPosition(fl);
+    }
+    //gets the angle in degrees
+    public double getHeading() {
+        Orientation angles = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
+        return angles.firstAngle-resetAngle; // left [0,-180] right[0,180]
+    }
+    //update position
+    public void updatePosition(double distance, double angle) {
+        currentxPosition += Math.sin(angle) * distance;
+        currentyPosition += Math.cos(angle) * distance;
+    }
     //goes to a position and angle on the field
     public void goToPosition(double power, double x, double y, double angle) {
         double deltaX = currentxPosition - x; //required change in x position from current to desired
@@ -357,86 +276,69 @@ public class AutonomousMethods extends LinearOpMode {
         currentxPosition=x;
     }
 
+    //game specific
     //sets power of intake
     public void setIntakePower(double power){
         robot.intake.setPower(power);
     }
-
     //set servo position
     public void controlLaunchServo(double position){
         robot.barrierServo.setPosition(position);
     }
-
-    //set claw positiom
+    //set claw position
     public void controlClawServo(double position){
         robot.clawServo.setPosition(position);
     }
-
     //arm position
     public void controlArmServo(double position){
         robot.armServo.setPosition(position);
     }
-
     //flywheel
     public void setShooterPower(double power){
         robot.shooter.setPower(power);
     }
+    //shoots all three rings at the same angle
+    public void shoot(double a, double power){
+        setShooterPower(power);
+        toAngle(.3, a);
+        controlLaunchServo(0);
+        setIntakePower(.3);
+        sleep(3000);
+        controlLaunchServo(1);
+        setIntakePower(0);
+    }
+    //shoots all three rings at 3 different angles
+    public void powerShot(double a1, double a2, double a3, double power1, double power2, double power3, double powerE){
+        setShooterPower(power1);
+        toAngle(.3, a1);
+        controlLaunchServo(0);
+        setIntakePower(.3);
+        sleep(500);
+        controlLaunchServo(1);
+        sleep(500);
+        setIntakePower(1);
 
+        setShooterPower(power2);
+        toAngle(.3, a2);
+        controlLaunchServo(0);
+        setIntakePower(.3);
+        sleep(500);
+        controlLaunchServo(1);
+        sleep(500);
+        setIntakePower(1);
 
+        setShooterPower(power3);
+        toAngle(.3, a3);
+        controlLaunchServo(0);
+        setIntakePower(.3);
+        sleep(500);
 
-    //sets all motors to the same power
-    public void setAllMotorsTo(double power) {
-        robot.backLeftMotor.setPower(power);
-        robot.backRightMotor.setPower(power);
-        robot.frontRightMotor.setPower(power);
-        robot.frontLeftMotor.setPower(power);
+        setShooterPower(powerE);
+        controlLaunchServo(1);
+        setIntakePower(0);
     }
 
-    //resets all wheel encoders to 0
-    public void stopAndResetEncoders() {
-        robot.backLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-    }
-
-    //set mode to run withouth encodrs
-    public void runWithouthEncoders() {
-        robot.backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        robot.backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        robot.frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        robot.frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-    }
-
-    //updates position on the field
-    public void updatePosition(double distance, double angle) {
-        currentxPosition += Math.sin(angle) * distance;
-        currentyPosition += Math.cos(angle) * distance;
-    }
-
-    //gets the angle in degrees
-    public double getHeading() {
-        Orientation angles = robot.imu.getAngularOrientation(AxesReference.INTRINSIC, AxesOrder.ZYX, AngleUnit.DEGREES);
-        return angles.firstAngle-resetAngle; // left [0,-180] right[0,180]
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //----------------------------------------------------------------------------------------------
-    // Camera operations
-    //----------------------------------------------------------------------------------------------
-
+    //Vision
     private void initializeFrameQueue(int capacity) {
         /** The frame queue will automatically throw away bitmap frames if they are not processed
          * quickly by the OpMode. This avoids a buildup of frames in memory */
@@ -448,7 +350,6 @@ public class AutonomousMethods extends LinearOpMode {
             }
         });
     }
-
     private void openCamera() {
         if (camera != null) return; // be idempotent
 
@@ -458,7 +359,6 @@ public class AutonomousMethods extends LinearOpMode {
             //error("camera not found or permission to use not granted: %s", cameraName);
         }
     }
-
     private void startCamera() {
         if (cameraCaptureSession != null) return; // be idempotent
 
@@ -527,7 +427,6 @@ public class AutonomousMethods extends LinearOpMode {
         /** Retrieve the created session. This will be null on error. */
         cameraCaptureSession = synchronizer.getValue();
     }
-
     private void stopCamera() {
         if (cameraCaptureSession != null) {
             cameraCaptureSession.stopCapture();
@@ -535,7 +434,6 @@ public class AutonomousMethods extends LinearOpMode {
             cameraCaptureSession = null;
         }
     }
-
     private void closeCamera() {
         stopCamera();
         if (camera != null) {
@@ -543,11 +441,6 @@ public class AutonomousMethods extends LinearOpMode {
             camera = null;
         }
     }
-
-    //----------------------------------------------------------------------------------------------
-    // Utilities
-    //----------------------------------------------------------------------------------------------
-
     private void error(String msg) {
         telemetry.log().add(msg);
         telemetry.update();
@@ -556,19 +449,14 @@ public class AutonomousMethods extends LinearOpMode {
         telemetry.log().add(format, args);
         telemetry.update();
     }
-
     private boolean contains(int[] array, int value) {
         for (int i : array) {
             if (i == value) return true;
         }
         return false;
     }
-
     public int findNumRings(Bitmap bitmap) {
 
-        //Mat region1_Cb;
-        //Mat HSV = new Mat();
-        //Mat Cb = new Mat();
         File file = new File(captureDirectory, String.format(Locale.getDefault(), "webcam-frame-%d.jpg", captureCounter++));
 
         try {
@@ -585,61 +473,25 @@ public class AutonomousMethods extends LinearOpMode {
         int rings = 0;
         int h = input.height();
         int w = input.width();
-        //Imgproc.cvtColor(input, input, Imgproc.COLOR_BGR2HSV);
-        //org.opencv.core.Size size = new org.opencv.core.Size(400,400);
-        //Imgproc.resize( input, input, size);
-        //Utils.matToBitmap(input, bitmap);
-
-        //region1_Cb = Cb.submat(new Rect(region1_pointA, region1_pointB));
-
-        //avg1 = (int) Core.mean(region1_Cb).val[0];
-        //Imgproc.rectangle(input, // Buffer to draw on
-        //        region1_pointA, // First point which defines the rectangle
-        //        region1_pointB, // Second point which defines the rectangle
-        //        BLUE, // The color the rectangle is drawn in
-        //        2); // Thickness of the rectangle lines
-        //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR; // Record our analysis
         Imgproc.rectangle(input, new Point(0,0), new Point(640,150), new Scalar(0,0,255), -1);
         Imgproc.rectangle(input, new Point(0,350), new Point(640,480), new Scalar(0,0,255), -1);
-        //Imgcodecs.imwrite(captureDirectory+"inp.jpg",input);
         Imgproc.cvtColor(input,input,Imgproc.COLOR_BGR2HSV);
-        Core.inRange(input, new Scalar(0, 75, 200),new Scalar(35, 230, 255),input);
+        Core.inRange(input, new Scalar(0, 100, 0),new Scalar(35, 360, 360),input);
 
-        //Bitmap x = Bitmap.createBitmap(input.rows(),input.cols(),Bitmap.Config.);
-        //Utils.matToBitmap(input,x);
-        //Imgcodecs.imwrite(captureDirectory+"mask.jpg",input);
         int pixels = Core.countNonZero(input);
         telemetry.addData("pixels!", pixels);
         telemetry.addData("width=",w);
         telemetry.addData("height=",h);
         if(pixels > 4000){
             rings = 4;
-            //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.FOUR;
 
         }else if (pixels > 1000){
             rings = 1;
-            //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.ONE;
         }else{
             rings = 0;
-            //position = EasyOpenCVExample.SkystoneDeterminationPipeline.RingPosition.NONE;
         }
-//        Imgproc.rectangle(
-//                input, // Buffer to draw on
-//                region1_pointA, // First point which defines the rectangle
-//                region1_pointB, // Second point which defines the rectangle
-//                GREEN, // The color the rectangle is drawn in
-//                -1); // Negative thickness means solid fill*/
         return rings;
     }
-    void inputToCb(Mat input) {
-        //Imgproc.cvtColor(input, YCrCb, Imgproc.COLOR_RGB2YCrCb);
-        //Core.extractChannel(YCrCb, Cb, 1);
-    }
-    //@Override
-    //@Override
-
-
-
 
     @Override
     public void runOpMode() throws InterruptedException {

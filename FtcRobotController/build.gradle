@@ -21,6 +21,10 @@ android {
     }
 }
 
+dependencies {
+    implementation project(path: ':OpenCv4')
+}
+
 repositories {
     maven { url = "https://dl.bintray.com/first-tech-challenge/ftcsdk/" }
 

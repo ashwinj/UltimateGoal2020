@@ -13,18 +13,34 @@ public class RedLeft extends AutonomousMethods {
     public void runOpMode() throws InterruptedException {
 
         int numberOfRings = 0;
+        double a = 48;//inches/square
 
         //initializing robot
         initializeRobot();
+        //detect number of rings
         numberOfRings = findNumRings(bmp);
         bmp.recycle();
-        //shoot?
-        //detect number of rings
+
+        //pick up wobble goal
+        controlClawServo(1);
+        controlArmServo(.75);
+
+        //shoot
+        setShooterPower(.45);
+        forward(.75, a*2);
+        powerShot(-20, -16,-10, .45, .45, .45, 0);
+        toAngle(.2, 0);
+
         switch (numberOfRings){
             case 0:
-                strafeRight(.5, 12);//move right half a square
-                forward(.5,72);//move forward 3 square
+                //move to square
+                forward(.75, a);
+                strafeRight(.5, a*.5);//move right half a square
                 //drop wobble goal
+                controlArmServo(0);
+                controlClawServo(0);
+                controlArmServo(.75);
+                //move back
                 break;
             case 1:
                 strafeLeft(.5, 12);//move left half a square

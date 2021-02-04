@@ -16,9 +16,15 @@ public class Test extends AutonomousMethods {
         //initializing robot
         initializeRobot();
         int numRings = findNumRings(bmp);
+        bmp.recycle()
         telemetry.addData("rings", numRings);
         telemetry.update();
-        sleep(10000);
+        forward(1, 48);
+        backward(1, 48);
+        strafeRight(1, 48);
+        strafeLeft(1, 48);
+        toAngle(1, -90);
+        toAngle(1, 90);
 
 
 

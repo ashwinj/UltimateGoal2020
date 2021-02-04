@@ -1,3 +1,4 @@
+include ':OpenCv4'
 include ':sdk'
 include ':FtcRobotController'
 include ':TeamCode'
